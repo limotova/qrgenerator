@@ -1,0 +1,12 @@
+# intellij files
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# gradle stuff
+.gradle/
+out/
+
+# osx stuff
+.DS_Store
