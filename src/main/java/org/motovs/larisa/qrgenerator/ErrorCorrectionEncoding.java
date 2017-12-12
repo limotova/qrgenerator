@@ -32,7 +32,7 @@ public class ErrorCorrectionEncoding implements Step<DataEncoding.EncodedData, E
         int remainderSize = 0;
         if(version > 1 && version < 7)
             remainderSize = 7;
-        bitBuffer.push((byte) 0, remainderSize);
+        bitBuffer.push(0, remainderSize);
     }
 
     private void makeErrorCorrectionWords(BitBuffer bitBuffer, int errorWords){
@@ -54,7 +54,7 @@ public class ErrorCorrectionEncoding implements Step<DataEncoding.EncodedData, E
         // error correction words
         int[] remainder = galoisField.remainder(messagePoly, generatorPoly);
         for(int i = errorWords - 1; i >= 0; i--)
-            bitBuffer.push((byte) remainder[i], 8);
+            bitBuffer.push(remainder[i], 8);
 
     }
 

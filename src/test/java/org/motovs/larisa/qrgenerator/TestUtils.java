@@ -10,10 +10,10 @@ public final class TestUtils {
         for (int i = 0; i < string.length(); i++) {
             switch (string.charAt(i)) {
                 case '1':
-                    bitBuffer.push((byte) 1, 1);
+                    bitBuffer.push(1, 1);
                     break;
                 case '0':
-                    bitBuffer.push((byte) 0, 1);
+                    bitBuffer.push(0, 1);
                     break;
                 default:
                     break;

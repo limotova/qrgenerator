@@ -46,18 +46,18 @@ public class DataEncoding implements Step<DataAnalysis.AnalyzedString, DataEncod
         int codeWordsNeeded = getEncodedWordCount(version);
         // TODO: this is different from the original
         if(bitBuffer.getBitSetLength() < codeWordsNeeded * 8 - 4){
-            bitBuffer.push((byte) 0, 4);
+            bitBuffer.push(0, 4);
         } else {
-            bitBuffer.push((byte) 0, codeWordsNeeded * 8 - bitBuffer.getBitSetLength());
+            bitBuffer.push(0, codeWordsNeeded * 8 - bitBuffer.getBitSetLength());
         }
-        bitBuffer.push((byte) 0, bitBuffer.getBitSetLength() % 8);
+        bitBuffer.push(0, bitBuffer.getBitSetLength() % 8);
 
         // more terminator bits
         // TODO: make this better
         while(bitBuffer.getBitSetLength() < codeWordsNeeded * 8){
-            bitBuffer.push((byte) 236, 8);
+            bitBuffer.push(236, 8);
             if(bitBuffer.getBitSetLength() < codeWordsNeeded * 8)
-                bitBuffer.push((byte) 17, 8);
+                bitBuffer.push(17, 8);
         }
     }
 
@@ -72,7 +72,7 @@ public class DataEncoding implements Step<DataAnalysis.AnalyzedString, DataEncod
 
     // TODO: these numbers are different for version size + mode
     private void addCharacterCount(BitBuffer bitBuffer, int stringLength){
-        bitBuffer.push((byte) stringLength, 8);
+        bitBuffer.push(stringLength, 8);
     }
     private void addMode(BitBuffer bitBuffer, Mode mode){
         bitBuffer.push(mode.indicatorValue, 4);

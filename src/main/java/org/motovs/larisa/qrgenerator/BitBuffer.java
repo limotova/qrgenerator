@@ -35,16 +35,12 @@ public class BitBuffer {
     }
 
     /**
-     * Adds bytes to bitsequence with leading zeroes
+     * Adds numbers to bitsequence
      *
-     * @param b byte to be added to bitsequence
-     * @param size  determines size (# of leading 0s) of byte (not really a byte; just a number)
+     * @param buffer value to be added to bitsequence
+     * @param size  determines size/length of value to be added (can truncate number or add leading 0s)
      */
-    public void push(byte b, int size){
-        int buffer;
-        if(b < 0)
-            buffer = 256 + b;   // TODO: I feel like I should just make b an int
-        else buffer = b;
+    public void push(int buffer, int size){
         for(int i = 0; i < size; i ++){
             if(buffer % 2 == 1)
                 bitSet.set(currentPos + size - 1 - i);
