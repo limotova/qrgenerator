@@ -16,7 +16,6 @@
 
 package org.motovs.larisa.qrgenerator;
 
-import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.List;
 
@@ -40,6 +39,10 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
             (Mask) (y, x) -> (((y + x) % 2) + ((y * x) % 3)) % 2 == 0 // flip bit if (row + column mod 2 + row * column mod 3) mod 2 == 0
     );
 
+    public static final List<MaskEvaluator> MASK_EVALUATORS = Arrays.asList(
+            new Evaluator1(), new Evaluator2(), new Evaluator3(), new Evaluator4()
+    );
+
     @Override
     public PlacedBits execute(ErrorCorrectionEncoding.DataWithErrorCorrection input) {
         byte[][] image = makeTemplate(input.version);
@@ -58,8 +61,38 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
     }
 
     private void addFormatting(byte[][] image, int mask) {
-        // TODO: add more mask/error correction information
-        byte[] formattingInfo = new byte[]{0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1};  // M, mask 0
+        // TODO: add more mask/error correction information and do this with math
+        byte[] formattingInfo;
+        switch (mask) {
+            case 0:
+                formattingInfo = new byte[]{0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1};  // M, mask 0
+                break;
+            case 1:
+                formattingInfo = new byte[]{1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1};  // M, mask 1
+                break;
+            case 2:
+                formattingInfo = new byte[]{0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1};  // M, mask 2
+                break;
+            case 3:
+                formattingInfo = new byte[]{1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1};  // M, mask 3
+                break;
+            case 4:
+                formattingInfo = new byte[]{1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1};  // M, mask 4
+                break;
+            case 5:
+                formattingInfo = new byte[]{0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1};  // M, mask 5
+                break;
+            case 6:
+                formattingInfo = new byte[]{1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1};  // M, mask 6
+                break;
+            case 7:
+                formattingInfo = new byte[]{0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1};  // M, mask 7
+                break;
+            default:
+                formattingInfo = new byte[15];
+                break;
+        }
+
         fillReserveAreas(image, formattingInfo);
     }
 
@@ -68,7 +101,7 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
             image[i][8] = formattingInfo[i];
             image[8][5 - i] = formattingInfo[i + 9];
         }
-        image[7][8] = formattingInfo[6];        //simpler to manually add these in
+        image[7][8] = formattingInfo[6];
         image[8][8] = formattingInfo[7];
         image[8][7] = formattingInfo[8];
 
@@ -87,16 +120,21 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
             for (int j = 0; j < image.length * 2; j++) {
                 int x;
                 int y;
-                if (i % 2 == 0)
+                if (i % 2 == 0) {
                     y = image.length - j / 2 - 1;  //so y doesn't go up/down every single turn
-                else
+                } else {
                     y = j / 2;
-                if (j % 2 == 0)
+                }
+
+                if (j % 2 == 0) {
                     x = image.length - 1 - i * 2;   //so x goes back and forth (r, l, r, l)
-                else
+                } else {
                     x = image.length - 2 - i * 2;
-                if (x < 7)       //done to skip the timing pattern on left side
-                    x--;
+                }
+
+                if (x < 7) {
+                    x--;   //done to skip the timing pattern on left side
+                }
                 if (image[y][x] == EMPTY) {
                     image[y][x] = bitBuffer.getBit(currentPos++) ? BLACK : WHITE;
                 }
@@ -105,37 +143,46 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
     }
 
     // determines which mask to add and adds it
-    private int addMask(byte[][] image) {
+    int addMask(byte[][] image) {
         // this will  include designing all masks, getting all formatting information, figuring out which is the best
         int bestMask = -1;
         int min = Integer.MAX_VALUE;
 
-        for(int i = 0; i < MASKS.size(); i++){
+        for (int i = 0; i < MASKS.size(); i++) {
             Mask m = MASKS.get(i);
             applyMask(m, image);
             int score = scoreImage(image);
-            if(min > score){
+//            System.out.println(score);
+            if (min > score) {
                 bestMask = i;
                 min = score;
             }
             applyMask(m, image);
         }
 
-        Mask m0 = MASKS.get(0);
-        applyMask(m0, image);
+        Mask m = MASKS.get(bestMask);
+        applyMask(m, image);
         return bestMask;
     }
 
     // evaluate the image based on 4 criterias
-    private int scoreImage(byte[][] image){
+    private int scoreImage(byte[][] image) {
         int runningTotal = 0;
-        // TODO: all score evaluation styles
+        for (MaskEvaluator e : MASK_EVALUATORS) {
+            runningTotal += e.evaluate(image);
+        }
         return runningTotal;
     }
-        private void applyMask(Mask mask, byte[][] image){
-        for(int y = 0; y < image.length; y++){
-            for(int x = 0; x < image.length; x++){
-                if(mask.evaluate(y, x)){
+
+
+    public static boolean moduleIsBlack(byte[][] image, int y, int x) {
+        return image[y][x] == RESERVED_BLACK || image[y][x] == BLACK;
+    }
+
+    private void applyMask(Mask mask, byte[][] image) {
+        for (int y = 0; y < image.length; y++) {
+            for (int x = 0; x < image.length; x++) {
+                if (mask.evaluate(y, x)) {
                     flipBit(y, x, image);
                 }
             }
