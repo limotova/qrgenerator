@@ -21,14 +21,15 @@ import java.util.List;
 
 public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorCorrection, BitPlacement.PlacedBits> {
 
-    public static final byte RESERVED_WHITE = 0;
-    public static final byte RESERVED_BLACK = 1;
-    public static final byte RESERVED = 2;
-    public static final byte EMPTY = 3;
-    public static final byte WHITE = 4;
-    public static final byte BLACK = 5;
+    private static final byte RESERVED_WHITE = 0;
+    private static final byte RESERVED_BLACK = 1;
+    private static final byte RESERVED = 2;
+    private static final byte EMPTY = 3;
+    private static final byte WHITE = 4;
+    private static final byte BLACK = 5;
 
-    public static final List<Mask> MASKS = Arrays.asList(
+    // rules for flipping bits in the QR code's drawing
+    private static final List<Mask> MASKS = Arrays.asList(
             (Mask) (y, x) -> (y + x) % 2 == 0,  // flip the bit if (row + column) mod 2 == 0
             (Mask) (y, x) -> (y % 2) == 0,      // flip bit if (row) mod 2 == 0
             (Mask) (y, x) -> (x % 3) == 0,      // flip bit if (column) mod 3 == 0
@@ -39,27 +40,36 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
             (Mask) (y, x) -> (((y + x) % 2) + ((y * x) % 3)) % 2 == 0 // flip bit if (row + column mod 2 + row * column mod 3) mod 2 == 0
     );
 
-    public static final List<MaskEvaluator> MASK_EVALUATORS = Arrays.asList(
+    // evaluation methods used to test how good a mask is
+    private static final List<MaskEvaluator> MASK_EVALUATORS = Arrays.asList(
             new Evaluator1(), new Evaluator2(), new Evaluator3(), new Evaluator4()
     );
 
+    /**
+     * Uses the data and error correction words to create the final QR code
+     *
+     * @param input BitBuffer with words, version
+     * @return PlacedBits: contains byte[][] with the complete QR code
+     */
     @Override
     public PlacedBits execute(ErrorCorrectionEncoding.DataWithErrorCorrection input) {
         byte[][] image = makeTemplate(input.version);
-        reserveAreas(image, input.version);
+        reserveAreas(image);
         drawInitialBits(image, input.bitBuffer);
         int mask = addMask(image);
         addFormatting(image, mask);
         return new PlacedBits(image);
     }
 
-    private void reserveAreas(byte[][] image, int version) {
+    // Marks certain regions on the QR Code as reserved
+    private void reserveAreas(byte[][] image) {
+        // TODO: for versions larger than 7, reserve version information area
         byte[] reservedArray = new byte[15];
         Arrays.fill(reservedArray, RESERVED);
         fillReserveAreas(image, reservedArray);
-        // TODO: for versions larger than 7, reserve version information area
     }
 
+    // Fills certain regions with mask- and error-correction-specific data
     private void addFormatting(byte[][] image, int mask) {
         // TODO: add more mask/error correction information and do this with math
         byte[] formattingInfo;
@@ -90,14 +100,25 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
                 break;
             default:
                 formattingInfo = new byte[15];
+                Arrays.fill(formattingInfo, (byte) -1);
                 break;
+        }
+
+        for (int i = 0; i < formattingInfo.length; i++) {
+            if (formattingInfo[i] == 0) {
+                formattingInfo[i] = RESERVED_WHITE;
+            } else if (formattingInfo[i] == 1) {
+                formattingInfo[i] = RESERVED_BLACK;
+            }
         }
 
         fillReserveAreas(image, formattingInfo);
     }
 
+    // Fills a specific region around the finder patterns with the contents of the formattingInfo byte[]
     private void fillReserveAreas(byte[][] image, byte[] formattingInfo) {
-        for (int i = 0; i < 6; i++) {        //formatting info around top left finder pattern
+        //formatting info around top left finder pattern
+        for (int i = 0; i < 6; i++) {
             image[i][8] = formattingInfo[i];
             image[8][5 - i] = formattingInfo[i + 9];
         }
@@ -105,36 +126,35 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
         image[8][8] = formattingInfo[7];
         image[8][7] = formattingInfo[8];
 
-        for (int i = 0; i < 8; i++)         //formatting info below top right finder pattern
+        //formatting info below top right finder pattern
+        for (int i = 0; i < 8; i++) {
             image[8][image.length - i - 1] = formattingInfo[i];
+        }
 
-        for (int i = 0; i < 7; i++)         //formatting info to right of bottom left finder pattern
+        //formatting info to right of bottom left finder pattern
+        for (int i = 0; i < 7; i++) {
             image[image.length - i - 1][8] = formattingInfo[14 - i];
+        }
     }
 
+    // draws the data/error correction words onto the image
     private void drawInitialBits(byte[][] image, BitBuffer bitBuffer) {
-
-        int columns = (image.length - 1) / 2;       //total up/down columns for words to travel in
+        int columns = (image.length - 1) / 2;   // total number of columns for words to be drawn in
         int currentPos = 0;
         for (int i = 0; i < columns; i++) {
             for (int j = 0; j < image.length * 2; j++) {
-                int x;
-                int y;
-                if (i % 2 == 0) {
-                    y = image.length - j / 2 - 1;  //so y doesn't go up/down every single turn
-                } else {
-                    y = j / 2;
+                // setting up x
+                int x = image.length - 1 - i * 2;
+                if (j % 2 == 1) {   // so x goes back and forth (r, l, r, l)
+                    x--;
                 }
-
-                if (j % 2 == 0) {
-                    x = image.length - 1 - i * 2;   //so x goes back and forth (r, l, r, l)
-                } else {
-                    x = image.length - 2 - i * 2;
-                }
-
                 if (x < 7) {
-                    x--;   //done to skip the timing pattern on left side
+                    x--;   // done to skip the timing pattern on left side
                 }
+
+                // setting up y: direction travelling switches from up to down every-other column
+                int y = (i % 2 == 0) ? (image.length - j / 2 - 1) : (j / 2);
+
                 if (image[y][x] == EMPTY) {
                     image[y][x] = bitBuffer.getBit(currentPos++) ? BLACK : WHITE;
                 }
@@ -142,9 +162,8 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
         }
     }
 
-    // determines which mask to add and adds it
-    int addMask(byte[][] image) {
-        // this will  include designing all masks, getting all formatting information, figuring out which is the best
+    // determines which mask to add and adds it permanently
+    private int addMask(byte[][] image) {
         int bestMask = -1;
         int min = Integer.MAX_VALUE;
 
@@ -152,7 +171,6 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
             Mask m = MASKS.get(i);
             applyMask(m, image);
             int score = scoreImage(image);
-//            System.out.println(score);
             if (min > score) {
                 bestMask = i;
                 min = score;
@@ -165,7 +183,7 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
         return bestMask;
     }
 
-    // evaluate the image based on 4 criterias
+    // evaluate the image based on 4 criteria
     private int scoreImage(byte[][] image) {
         int runningTotal = 0;
         for (MaskEvaluator e : MASK_EVALUATORS) {
@@ -174,11 +192,7 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
         return runningTotal;
     }
 
-
-    public static boolean moduleIsBlack(byte[][] image, int y, int x) {
-        return image[y][x] == RESERVED_BLACK || image[y][x] == BLACK;
-    }
-
+    // adds the specific mask to the image
     private void applyMask(Mask mask, byte[][] image) {
         for (int y = 0; y < image.length; y++) {
             for (int x = 0; x < image.length; x++) {
@@ -189,6 +203,7 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
         }
     }
 
+    // flips bits that aren't reserved
     private void flipBit(int y, int x, byte[][] image) {
         if (image[y][x] == WHITE) {
             image[y][x] = BLACK;
@@ -197,50 +212,53 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
         }
     }
 
+    // creates the byte[][] to be used as the QR code and draws in all constant patterns
     private byte[][] makeTemplate(int version) {
         int size = ((version - 1) * 4) + 21;
         byte[][] image = new byte[size][size];
         for (byte[] row : image)
             Arrays.fill(row, EMPTY);
 
-        finderPattern(image, 0, 0);
-        finderPattern(image, size - 7, 0);
-        finderPattern(image, 0, size - 7);
+        drawFinderPattern(image, 0, 0);
+        drawFinderPattern(image, size - 7, 0);
+        drawFinderPattern(image, 0, size - 7);
 
-        alignmentPatterns(image, version);
-        timingPatterns(image);
-        darkModule(image, version);
+        drawAlignmentPatterns(image, version);
+        drawTimingPatterns(image);
+        drawDarkModule(image, version);
         return image;
     }
 
-
-    private void finderPattern(byte[][] image, int startX, int startY) {
-        // TODO: is there a way to make this better
-        // separators around the finder pattern
+    private void drawFinderPattern(byte[][] image, int startX, int startY) {
+        // separators around the finder pattern (these are cut off by the edges of the QR code)
         for (int i = 0; i < 9; i++) {
             int x = startX - 1 + i;
             if (x >= 0 && x < image.length) {
                 for (int j = 0; j < 9; j++) {
                     int y = startY - 1 + j;
-                    if (y >= 0 && y < image.length)
+                    if (y >= 0 && y < image.length) {
                         image[x][y] = RESERVED_WHITE;
+                    }
                 }
             }
         }
 
-        for (int i = 0; i < 7; i++)     // fills in entire pattern black first
+        // fills in entire pattern black first
+        for (int i = 0; i < 7; i++)
             for (int j = 0; j < 7; j++)
                 image[startX + i][startY + j] = RESERVED_BLACK;
+
+        // draws in the inner white square
         for (int i = 0; i < 5; i++) {
-            image[startX + 1 + i][startY + 1] = RESERVED_WHITE;      //fills in the inner white square
+            image[startX + 1 + i][startY + 1] = RESERVED_WHITE;
             image[startX + 1][startY + 1 + i] = RESERVED_WHITE;
             image[startX + 1 + i][startY + 5] = RESERVED_WHITE;
             image[startX + 5][startY + 1 + i] = RESERVED_WHITE;
         }
     }
 
-    private void alignmentPatterns(byte[][] image, int version) {
-        // TODO: also larger versions have more numbers
+    private void drawAlignmentPatterns(byte[][] image, int version) {
+        // TODO: larger versions have more alignment patterns with greatly varrying locations
         if (version < 2)
             return;
         int center = version * 4 + 10;
@@ -253,21 +271,29 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
         image[center][center] = RESERVED_BLACK;
     }
 
-    private void timingPatterns(byte[][] image) {
+    private void drawTimingPatterns(byte[][] image) {
         for (int i = 8; i < image.length - 8; i++) {
             image[i][6] = i % 2 == 0 ? RESERVED_BLACK : RESERVED_WHITE;
             image[6][i] = i % 2 == 0 ? RESERVED_BLACK : RESERVED_WHITE;
         }
     }
 
-    private void darkModule(byte[][] image, int version) {
+    private void drawDarkModule(byte[][] image, int version) {
         image[4 * version + 9][8] = RESERVED_BLACK;
     }
 
-    public static class PlacedBits {
-        public byte[][] image;
+    static boolean bitIsBlack(byte[][] image, int y, int x) {
+        return image[y][x] == RESERVED_BLACK || image[y][x] == BLACK;
+    }
 
-        public PlacedBits(byte[][] image) {
+    static boolean bitHasData(byte[][] image, int y, int x){
+        return image[y][x] != EMPTY && image[y][x] != RESERVED;
+    }
+
+    public static class PlacedBits {
+        public final byte[][] image;
+
+        PlacedBits(byte[][] image) {
             this.image = image;
         }
     }

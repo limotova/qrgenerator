@@ -18,12 +18,18 @@ package org.motovs.larisa.qrgenerator;
 
 public class Evaluator4 implements MaskEvaluator {
 
+    /**
+     * Evaluates QR Code based on a formula using the ratio of black to white bits
+     *
+     * @param image QR code to be evaluated
+     * @return  penalty points
+     */
     @Override
     public int evaluate(byte[][] image) {
         int blackCount = 0;
         for (int i = 0; i < image.length; i++) {
             for (int j = 0; j < image.length; j++) {
-                if (BitPlacement.moduleIsBlack(image, i, j)) {
+                if (BitPlacement.bitIsBlack(image, i, j)) {
                     blackCount++;
                 }
             }

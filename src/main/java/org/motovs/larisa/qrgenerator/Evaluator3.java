@@ -17,6 +17,15 @@
 package org.motovs.larisa.qrgenerator;
 
 public class Evaluator3 implements MaskEvaluator {
+
+
+    /**
+     * Evaluates QR Code by seeing how many times a specific pattern of bits appears
+     * (+40 penalty for each occurrence of this pattern)
+     *
+     * @param image QR code to be evaluated
+     * @return  penalty points
+     */
     @Override
     public int evaluate(byte[][] image) {
         final int pattern1 = 1488;
@@ -29,7 +38,7 @@ public class Evaluator3 implements MaskEvaluator {
             for (int j = 0; j < image.length; j++) {
                 current = current << 1;
                 current &= bitsUsed;
-                if (BitPlacement.moduleIsBlack(image, i, j)) {
+                if (BitPlacement.bitIsBlack(image, i, j)) {
                     current |= 1;
                 }
                 if (current == pattern1 || (current == pattern2 && j > 10)) {
@@ -43,7 +52,7 @@ public class Evaluator3 implements MaskEvaluator {
             for (int i = 0; i < image.length; i++) {
                 current = current << 1;
                 current &= bitsUsed;
-                if (BitPlacement.moduleIsBlack(image, i, j)) {
+                if (BitPlacement.bitIsBlack(image, i, j)) {
                     current |= 1;
                 }
                 if (current == pattern1 || (current == pattern2 && i > 10)) {

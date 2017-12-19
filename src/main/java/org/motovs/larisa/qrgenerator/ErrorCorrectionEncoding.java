@@ -20,6 +20,12 @@ import org.apache.hadoop.raid.GaloisField;
 
 public class ErrorCorrectionEncoding implements Step<DataEncoding.EncodedData, ErrorCorrectionEncoding.DataWithErrorCorrection> {
 
+    /**
+     * Adds in error correction to the bitbuffer
+     *
+     * @param input current bitBuffer (with data words), number of error words, version
+     * @return DataWithErrorCorrection: data + error words (BitBuffer), version (int)
+     */
     @Override
     public DataWithErrorCorrection execute(DataEncoding.EncodedData input) {
         makeErrorCorrectionWords(input.bitBuffer, input.errorWords);
@@ -27,50 +33,50 @@ public class ErrorCorrectionEncoding implements Step<DataEncoding.EncodedData, E
         return new DataWithErrorCorrection(input.bitBuffer, input.version);
     }
 
-    private void addRemainderBits(BitBuffer bitBuffer, int version){
-        // TODO: add in bigger versions later
+    private void addRemainderBits(BitBuffer bitBuffer, int version) {
+        // TODO: add in larger versions
         int remainderSize = 0;
-        if(version > 1 && version < 7)
+        if (version > 1 && version < 7)
             remainderSize = 7;
         bitBuffer.push(0, remainderSize);
     }
 
-    private void makeErrorCorrectionWords(BitBuffer bitBuffer, int errorWords){
+    private void makeErrorCorrectionWords(BitBuffer bitBuffer, int errorWords) {
+        // setup polynomials
         int[] codeWords = bitBuffer.getWords();
-        // reverse for the sake of polynomials
-        reverseArray(codeWords);
-
-        // TODO: only 1 EC block supported for now
+        reverseArray(codeWords);    // reverse for the sake of polynomial multiplication
+        // TODO: support multiple EC blocks
         GaloisField galoisField = GaloisField.getInstance();
         int[] messagePoly = new int[codeWords.length + errorWords];
         System.arraycopy(codeWords, 0, messagePoly, errorWords, codeWords.length);
 
+        // generate error correction words
         int[] generatorPoly = {1, 1};
-        for(int n = 1; n < errorWords; n++){    // TODO: is it possible to shorten this?
+        for (int n = 1; n < errorWords; n++) {
             int[] nextPoly = {galoisField.power(2, n), 1};
-            generatorPoly =  galoisField.multiply(generatorPoly, nextPoly);
+            generatorPoly = galoisField.multiply(generatorPoly, nextPoly);
         }
 
-        // error correction words
+        // push error correction words
         int[] remainder = galoisField.remainder(messagePoly, generatorPoly);
-        for(int i = errorWords - 1; i >= 0; i--)
+        for (int i = errorWords - 1; i >= 0; i--)
             bitBuffer.push(remainder[i], 8);
 
     }
 
-    private static void reverseArray(int[] a){
-        for(int i = 0; i < a.length / 2; i++){
+    private static void reverseArray(int[] a) {
+        for (int i = 0; i < a.length / 2; i++) {
             int temp = a[i];
             a[i] = a[a.length - 1 - i];
             a[a.length - 1 - i] = temp;
         }
     }
 
-    public static class DataWithErrorCorrection{
+    public static class DataWithErrorCorrection {
         public BitBuffer bitBuffer;
         int version;
 
-        public DataWithErrorCorrection(BitBuffer bitBuffer, int version){
+        public DataWithErrorCorrection(BitBuffer bitBuffer, int version) {
             this.bitBuffer = bitBuffer;
             this.version = version;
         }

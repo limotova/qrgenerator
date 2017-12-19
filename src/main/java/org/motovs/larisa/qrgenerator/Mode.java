@@ -21,7 +21,7 @@ public enum Mode {
 
     public byte indicatorValue;
 
-    Mode(final int indicatorValue){ // TODO: is this bad?
+    Mode(final int indicatorValue) { // TODO: is this bad?
         this.indicatorValue = (byte) indicatorValue;
     }
 }

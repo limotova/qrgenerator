@@ -19,30 +19,29 @@ package org.motovs.larisa.qrgenerator;
 import java.util.BitSet;
 
 /**
- * org.motovs.larisa.qrgenerator.BitBuffer is used to easily add bits to a BitSet to incorporate leading 0s and the like
+ * Modification on the BitSet class to allow for trailing 0s and easily push larger numbers
  */
 public class BitBuffer {
     private BitSet bitSet;
     private int currentPos;
 
     /**
-     * Creates a new org.motovs.larisa.qrgenerator.BitBuffer to store qr code information
-     *
+     * Creates a new BitBuffer to store qr code information
      */
-    public BitBuffer(){
+    BitBuffer() {
         bitSet = new BitSet();
         currentPos = 0;
     }
 
     /**
-     * Adds numbers to bitsequence
+     * Adds numbers in binary form to bitset
      *
-     * @param buffer value to be added to bitsequence
-     * @param size  determines size/length of value to be added (can truncate number or add leading 0s)
+     * @param buffer value to be added to bitset
+     * @param size   determines size/length of value to be added (will truncate if too short; add trailing 0s if too long)
      */
-    public void push(int buffer, int size){
-        for(int i = 0; i < size; i ++){
-            if(buffer % 2 == 1)
+    void push(int buffer, int size) {
+        for (int i = 0; i < size; i++) {
+            if (buffer % 2 == 1)
                 bitSet.set(currentPos + size - 1 - i);
             buffer = (buffer / 2);
         }
@@ -50,51 +49,41 @@ public class BitBuffer {
     }
 
     /**
-     * Gets the bitset (was mostly used in testing) TODO: maybe delete this???
-     *
-     * @return  bitset with qr code
-     */
-    public BitSet getBitSet(){
-        return bitSet;
-    }
-
-    /**
      * Gets the current length of the bitset
      *
-     * @return  current position, because bitset.length gives you the last 1 and ignores the 0s
+     * @return current length
      */
-    public int getBitSetLength(){
-        return currentPos;
+    int getBitSetLength() {
+        return currentPos;  // bitset.length ignores 0s and only returns the position of the last 1
     }
 
     /**
-     * Turns the bitset into a string of 0s and 1s, separated with a space every 8 bits/byte
-     * Was primarily used in testing
+     * Turns the bitset into a string of 0s and 1s, separated with a space every 8 bits
      *
-     * @return  0s and 1s corresponding to the bitset
+     * @return 0s and 1s corresponding to the bitset
      */
     @Override
     public String toString() {
-        StringBuilder builder = new StringBuilder();
-        for(int i = 0; i < currentPos; i++){
-            if(i != 0 && i % 8 == 0)
-                builder.append(" ");
-            if(bitSet.get(i))
-                builder.append(1);
-            else builder.append(0);
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int i = 0; i < currentPos; i++) {
+            if (i != 0 && i % 8 == 0)
+                stringBuilder.append(" ");
+            if (bitSet.get(i))
+                stringBuilder.append(1);
+            else stringBuilder.append(0);
         }
-        return builder.toString();
+        return stringBuilder.toString();
     }
 
     /**
-     * Gets each word (8 bits/1 byte) in the bitsequence
+     * Gets each word (8 bits per word) in the bitset
      *
-     * @return  array with each value being 1 byte
+     * @return array of integers with each value representing a word
      */
-    public int[] getWords(){
+    int[] getWords() {
         int[] buffer = new int[(currentPos + 7) / 8];
-        for(int i = 0; i < currentPos; i ++){
-            if(bitSet.get(i)){
+        for (int i = 0; i < currentPos; i++) {
+            if (bitSet.get(i)) {
                 buffer[i / 8] |= (1 << (7 - i % 8));
             }
         }
@@ -102,12 +91,12 @@ public class BitBuffer {
     }
 
     /**
-     * Returns the bit at the specified position (used when drawing)
+     * Returns the bit at the specified position
      *
-     * @param position  position of requested bit
-     * @return  true = 1; false = 0
+     * @param position position of requested bit
+     * @return true = 1; false = 0
      */
-    public boolean getBit(int position){
+    boolean getBit(int position) {
         return bitSet.get(position);
     }
 }

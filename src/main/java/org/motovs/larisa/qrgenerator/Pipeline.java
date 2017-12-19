@@ -22,7 +22,7 @@ import java.util.List;
 public class Pipeline<I, O> {
     private final List<Step> pipelineSteps;
 
-    Pipeline(Step...steps){
+    Pipeline(Step... steps) {
         pipelineSteps = Arrays.asList(steps);
     }
 

@@ -16,12 +16,12 @@
 
 package org.motovs.larisa.qrgenerator;
 
-public final class TestUtils {
+final class TestUtils {
 
     private TestUtils() {
     }
 
-    public static BitBuffer parseBitBuffer(String string) {
+    static BitBuffer parseBitBuffer(String string) {
         BitBuffer bitBuffer = new BitBuffer();
         for (int i = 0; i < string.length(); i++) {
             switch (string.charAt(i)) {
@@ -38,11 +38,11 @@ public final class TestUtils {
         return bitBuffer;
     }
 
-    public static String pictureToString(byte[][] picture) {
+    static String pictureToString(byte[][] picture) {
         StringBuilder stringBuilder = new StringBuilder();
         for (int i = 0; i < picture.length; i++) {
             for (int j = 0; j < picture[i].length; j++) {
-                if (picture[i][j] == BitPlacement.EMPTY || picture[i][j] == BitPlacement.RESERVED)
+                if (!BitPlacement.bitHasData(picture, i, j))
                     stringBuilder.append('?');
                 else
                     stringBuilder.append(picture[i][j] % 2 == 0 ? ' ' : '#');
@@ -52,16 +52,16 @@ public final class TestUtils {
         return stringBuilder.toString();
     }
 
-    public static byte[][] stringToPicture(String picture) {
+    static byte[][] stringToPicture(String picture) {
         String[] strings = picture.split("\n");
         byte[][] image = new byte[strings.length][strings.length];
         for (int i = 0; i < strings.length; i++) {
             String s = strings[i];
             for (int j = 0; j < s.length(); j++) {
                 if (s.charAt(j) == '#') {
-                    image[i][j] = BitPlacement.BLACK;
+                    image[i][j] = 1;
                 } else {
-                    image[i][j] = BitPlacement.WHITE;
+                    image[i][j] = 0;
                 }
             }
         }

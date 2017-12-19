@@ -22,16 +22,21 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 
-public class ImageProduction implements Step<BitPlacement.PlacedBits, String>{
+public class ImageProduction implements Step<BitPlacement.PlacedBits, String> {
 
-    private final int BLOCK_SIZE = 5;
-
+    /**
+     * Saves the QR code as a .png image
+     *
+     * @param input byte[][] of the QR code to be drawn
+     * @return name of the file
+     */
     @Override
     public String execute(BitPlacement.PlacedBits input) {
         return createImage(input.image);
     }
 
-    private String createImage(byte[][] image){
+    private String createImage(byte[][] image) {
+        final int BLOCK_SIZE = 5;
         int size = image.length + 8;
         BufferedImage bufferedImage = new BufferedImage(size * BLOCK_SIZE, size * BLOCK_SIZE, BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics2D = bufferedImage.createGraphics();
@@ -40,16 +45,19 @@ public class ImageProduction implements Step<BitPlacement.PlacedBits, String>{
         graphics2D.fillRect(0, 0, size * BLOCK_SIZE, size * BLOCK_SIZE);
 
         graphics2D.setColor(Color.BLACK);
-        for(int i = 0; i < image.length; i++)
-            for(int j = 0; j < image[i].length; j++)
-                if(image[i][j] == BitPlacement.RESERVED_BLACK || image[i][j] == BitPlacement.BLACK)
-                    graphics2D.fillRect((4 + j) * BLOCK_SIZE, (4 + i) * BLOCK_SIZE , BLOCK_SIZE, BLOCK_SIZE);
+        for (int i = 0; i < image.length; i++) {
+            for (int j = 0; j < image[i].length; j++) {
+                if (BitPlacement.bitIsBlack(image, i, j)) {
+                    graphics2D.fillRect((4 + j) * BLOCK_SIZE, (4 + i) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                }
+            }
+        }
 
         String name = "qr_image.png";
-        try{
+        try {
             File file = new File(name);
             ImageIO.write(bufferedImage, "png", file);
-        } catch (IOException e){
+        } catch (IOException e) {
             throw new QRException("Cannot save image", e);
         }
         return name;

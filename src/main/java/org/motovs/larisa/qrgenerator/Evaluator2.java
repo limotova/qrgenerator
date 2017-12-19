@@ -17,14 +17,22 @@
 package org.motovs.larisa.qrgenerator;
 
 public class Evaluator2 implements MaskEvaluator {
+
+    /**
+     * Evaluates QR Code by seeing how many 2x2 blocks of a single color there are
+     * (+3 penalty for each 2x2 block)
+     *
+     * @param image QR code to be evaluated
+     * @return  penalty points
+     */
     @Override
     public int evaluate(byte[][] image) {
         int penaltyTotal = 0;
         for (int i = 0; i < image.length - 1; i++) {
             for (int j = 0; j < image.length - 1; j++) {
-                if ((BitPlacement.moduleIsBlack(image, i, j) == BitPlacement.moduleIsBlack(image, i + 1, j)) &&
-                        (BitPlacement.moduleIsBlack(image, i + 1, j + 1) == BitPlacement.moduleIsBlack(image, i, j + 1)) &&
-                        (BitPlacement.moduleIsBlack(image, i, j) == BitPlacement.moduleIsBlack(image, i + 1, j + 1))) {
+                if ((BitPlacement.bitIsBlack(image, i, j) == BitPlacement.bitIsBlack(image, i + 1, j)) &&
+                        (BitPlacement.bitIsBlack(image, i + 1, j + 1) == BitPlacement.bitIsBlack(image, i, j + 1)) &&
+                        (BitPlacement.bitIsBlack(image, i, j) == BitPlacement.bitIsBlack(image, i + 1, j + 1))) {
                     penaltyTotal += 3;
                 }
             }

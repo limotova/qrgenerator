@@ -20,6 +20,12 @@ import java.io.UnsupportedEncodingException;
 
 public class DataEncoding implements Step<DataAnalysis.AnalyzedString, DataEncoding.EncodedData> {
 
+    /**
+     * Encodes the message as per mode
+     *
+     * @param input Mode, version, message
+     * @return EncodedData: contains data (bitBuffer), version (int), word count (int), error word count (int)
+     */
     @Override
     public EncodedData execute(DataAnalysis.AnalyzedString input) {
         BitBuffer bitBuffer = new BitBuffer();
@@ -29,8 +35,9 @@ public class DataEncoding implements Step<DataAnalysis.AnalyzedString, DataEncod
         return new EncodedData(bitBuffer, input.version, getEncodedWordCount(input.version), getErrorWordCount(input.version));
     }
 
-    // TODO: support other modes
-    private void encodeData(BitBuffer bitBuffer, String string, int version){
+    private void encodeData(BitBuffer bitBuffer, String string, int version) {
+        // TODO: support other EC modes
+        // this is byte mode
         byte[] encodedChars;
         try {
             encodedChars = string.getBytes("ISO-8859-1");
@@ -39,13 +46,13 @@ public class DataEncoding implements Step<DataAnalysis.AnalyzedString, DataEncod
             encodedChars = new byte[0];
         }
 
-        for(byte c : encodedChars)
+        for (int c : encodedChars) {
             bitBuffer.push(c, 8);
+        }
 
         // add terminator bits if needed
         int codeWordsNeeded = getEncodedWordCount(version);
-        // TODO: this is different from the original
-        if(bitBuffer.getBitSetLength() < codeWordsNeeded * 8 - 4){
+        if (bitBuffer.getBitSetLength() < codeWordsNeeded * 8 - 4) {
             bitBuffer.push(0, 4);
         } else {
             bitBuffer.push(0, codeWordsNeeded * 8 - bitBuffer.getBitSetLength());
@@ -53,39 +60,39 @@ public class DataEncoding implements Step<DataAnalysis.AnalyzedString, DataEncod
         bitBuffer.push(0, bitBuffer.getBitSetLength() % 8);
 
         // more terminator bits
-        // TODO: make this better
-        while(bitBuffer.getBitSetLength() < codeWordsNeeded * 8){
+        while (bitBuffer.getBitSetLength() < codeWordsNeeded * 8) {
             bitBuffer.push(236, 8);
-            if(bitBuffer.getBitSetLength() < codeWordsNeeded * 8)
+            if (bitBuffer.getBitSetLength() < codeWordsNeeded * 8)
                 bitBuffer.push(17, 8);
         }
     }
 
-    // TODO: add multiple error words per block
-    public static int getEncodedWordCount(int version){
+    // TODO: support multiple error words per block (necessary for larger versions)
+    private static int getEncodedWordCount(int version) {
         return totalCodeWords[version - 1] - errorWordsPerBlock[version - 1];
     }
 
-    public static int getErrorWordCount(int version){
+    private static int getErrorWordCount(int version) {
         return errorWordsPerBlock[version - 1];
     }
 
-    // TODO: these numbers are different for version size + mode
-    private void addCharacterCount(BitBuffer bitBuffer, int stringLength){
+    // TODO: these numbers change different for version size + mode
+    private void addCharacterCount(BitBuffer bitBuffer, int stringLength) {
         bitBuffer.push(stringLength, 8);
     }
-    private void addMode(BitBuffer bitBuffer, Mode mode){
+
+    private void addMode(BitBuffer bitBuffer, Mode mode) {
         bitBuffer.push(mode.indicatorValue, 4);
     }
 
-    public static class EncodedData{
+    public static class EncodedData {
         public BitBuffer bitBuffer;
         public int version;
         public int codeWords;
         public int errorWords;
 //        public int numBlocks;
 
-        public EncodedData(BitBuffer bitBuffer, int version, int codeWords, int errorWords){
+        public EncodedData(BitBuffer bitBuffer, int version, int codeWords, int errorWords) {
             this.bitBuffer = bitBuffer;
             this.version = version;
             this.codeWords = codeWords;

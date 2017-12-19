@@ -22,6 +22,12 @@ import java.util.Objects;
 public class DataAnalysis implements Step<String, DataAnalysis.AnalyzedString> {
     // this class figures out: encoding Mode, error correction level (kinda), version number
 
+    /**
+     * Analyzes the string for the QR code's message
+     *
+     * @param input message for QR code
+     * @return AnalyzedString. Contains encryption mode (Mode), version # (int), and message (String)
+     */
     @Override
     public AnalyzedString execute(String input) {
         Mode mode = determineMode(input);
@@ -31,45 +37,44 @@ public class DataAnalysis implements Step<String, DataAnalysis.AnalyzedString> {
         return new AnalyzedString(input, mode, version);
     }
 
-    // TODO: other modes
-    private Mode determineMode(String input){
+    private Mode determineMode(String input) {
+        // TODO: develop other modes
         // NUMERIC:         0-9
         // ALPHANUMERIC:    0-9,
         // BYTE:            ISO_8859_1
         // KANJI:           SHIFT-JIS
         Mode mode = Mode.BYTE;
-        if(Charset.forName("ISO_8859_1").newEncoder().canEncode(input))
+        if (Charset.forName("ISO_8859_1").newEncoder().canEncode(input))
             mode = Mode.BYTE;
 
         return mode;
     }
 
-    // TODO: other EC/modes
-    private int determineVersion(int inputSize, Mode mode, ErrorCorrectionLevel ec){
+    private int determineVersion(int inputSize, Mode mode, ErrorCorrectionLevel ec) {
+        // TODO: other EC/modes
+        // this may need to be some sort of setting somewhere
         // only Byte mode so far, on medium EC:
         int version;
 
-        if(inputSize < 15)
+        if (inputSize < 15) {
             version = 1;
-        else if (inputSize < 26)
+        } else if (inputSize < 26) {
             version = 2;
-        else if (inputSize < 43)
+        } else if (inputSize < 43) {
             version = 3;
-//        else if (inputSize < 63)
-//            version = 4;
-//        else if(inputSize < 84)
-//            version = 5;
-        else version = -1;
+        } else {
+            version = -1;
+        }
 
         return version;
     }
 
-    public static class AnalyzedString{
+    public static class AnalyzedString {
         public final String inputString;
         public final Mode mode;
         public final int version;
 
-        public AnalyzedString(String inputString, Mode mode, int version){
+        AnalyzedString(String inputString, Mode mode, int version) {
             this.inputString = inputString;
             this.mode = mode;
             this.version = version;
