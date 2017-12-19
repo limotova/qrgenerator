@@ -40,6 +40,9 @@ public class BitBuffer {
      * @param size   determines size/length of value to be added (will truncate if too short; add trailing 0s if too long)
      */
     void push(int buffer, int size) {
+        if (buffer < 0) {
+            buffer += 256;
+        }
         for (int i = 0; i < size; i++) {
             if (buffer % 2 == 1)
                 bitSet.set(currentPos + size - 1 - i);

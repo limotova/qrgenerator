@@ -19,9 +19,9 @@ package org.motovs.larisa.qrgenerator;
 public enum Mode {
     NUMERIC(1), ALPHANUMERIC(2), BYTE(4), KANJI(8);
 
-    public byte indicatorValue;
+    public int indicatorValue;
 
-    Mode(final int indicatorValue) { // TODO: is this bad?
-        this.indicatorValue = (byte) indicatorValue;
+    Mode(final int indicatorValue) {
+        this.indicatorValue = indicatorValue;
     }
 }
