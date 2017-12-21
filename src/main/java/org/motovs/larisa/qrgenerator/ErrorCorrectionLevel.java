@@ -17,5 +17,11 @@
 package org.motovs.larisa.qrgenerator;
 
 public enum ErrorCorrectionLevel {
-    LOW, MEDIUM, QUARTILE, HIGH;
+    LOW(1), MEDIUM(0), QUARTILE(3), HIGH(2);
+
+    public int indicatorValue;
+
+    ErrorCorrectionLevel(final int indicatorValue) {
+        this.indicatorValue = indicatorValue;
+    }
 }

@@ -21,7 +21,7 @@ import java.util.List;
 
 public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorCorrection, BitPlacement.PlacedBits> {
 
-    private static final byte RESERVED_WHITE = 0;
+    private static final byte RESERVED_WHITE = 0;   // don't change RESERVED_WHITE or RESERVED_BLACK
     private static final byte RESERVED_BLACK = 1;
     private static final byte RESERVED = 2;
     private static final byte EMPTY = 3;
@@ -57,61 +57,20 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
         reserveAreas(image);
         drawInitialBits(image, input.bitBuffer);
         int mask = addMask(image);
-        addFormatting(image, mask);
+        addFormatting(image, mask, input.errorCorrectionLevel);
         return new PlacedBits(image);
     }
 
     // Marks certain regions on the QR Code as reserved
     private void reserveAreas(byte[][] image) {
-        // TODO: for versions larger than 7, reserve version information area
         byte[] reservedArray = new byte[15];
         Arrays.fill(reservedArray, RESERVED);
         fillReserveAreas(image, reservedArray);
     }
 
     // Fills certain regions with mask- and error-correction-specific data
-    private void addFormatting(byte[][] image, int mask) {
-        // TODO: add more mask/error correction information and do this with math
-        byte[] formattingInfo;
-        switch (mask) {
-            case 0:
-                formattingInfo = new byte[]{0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1};  // M, mask 0
-                break;
-            case 1:
-                formattingInfo = new byte[]{1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1};  // M, mask 1
-                break;
-            case 2:
-                formattingInfo = new byte[]{0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1};  // M, mask 2
-                break;
-            case 3:
-                formattingInfo = new byte[]{1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1};  // M, mask 3
-                break;
-            case 4:
-                formattingInfo = new byte[]{1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1};  // M, mask 4
-                break;
-            case 5:
-                formattingInfo = new byte[]{0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1};  // M, mask 5
-                break;
-            case 6:
-                formattingInfo = new byte[]{1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1};  // M, mask 6
-                break;
-            case 7:
-                formattingInfo = new byte[]{0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1};  // M, mask 7
-                break;
-            default:
-                formattingInfo = new byte[15];
-                Arrays.fill(formattingInfo, (byte) -1);
-                break;
-        }
-
-        for (int i = 0; i < formattingInfo.length; i++) {
-            if (formattingInfo[i] == 0) {
-                formattingInfo[i] = RESERVED_WHITE;
-            } else if (formattingInfo[i] == 1) {
-                formattingInfo[i] = RESERVED_BLACK;
-            }
-        }
-
+    private void addFormatting(byte[][] image, int mask, ErrorCorrectionLevel errorCorrectionLevel) {
+        byte[] formattingInfo = generateFormattingPolynomial(mask, errorCorrectionLevel);
         fillReserveAreas(image, formattingInfo);
     }
 
@@ -133,8 +92,80 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
 
         //formatting info to right of bottom left finder pattern
         for (int i = 0; i < 7; i++) {
-            image[image.length - i - 1][8] = formattingInfo[14 - i];
+            image[image.length - i - 1][8] = formattingInfo[formattingInfo.length - 1 - i];
         }
+    }
+
+    // generates formatting information that goes around the finder patterns
+    byte[] generateFormattingPolynomial(int mask, ErrorCorrectionLevel errorCorrectionLevel) {
+        byte[] maskErrorInfo = new byte[5];
+        int ecValue = errorCorrectionLevel.indicatorValue;
+        for (int i = 1; i >= 0 && ecValue > 0; i--) {
+            maskErrorInfo[i] = (byte) (ecValue % 2);
+            ecValue /= 2;
+        }
+        for (int i = 4; i >= 2 && mask > 0; i--) {
+            maskErrorInfo[i] = (byte) (mask % 2);
+            mask /= 2;
+        }
+
+        final byte[] generatorPoly = {1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1};
+        byte[] formattingInfo = generateInfoPolynomial(maskErrorInfo, 15, generatorPoly);
+        final byte[] maskPolynomial = {0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1};
+        dividePolynomials(formattingInfo, 0, maskPolynomial);
+
+        return formattingInfo;
+    }
+
+    // fills a 3x6 area on the top right and a 6x3 area on the bottom left with version info
+    private void fillVersionAreas(byte[][] image, int version) {
+        byte[] reservedArray = generateVersionPolynomial(version);
+        for (int i = 0; i < reservedArray.length; i++) {
+            image[image.length - 11 + (i / 6)][i % 6] = reservedArray[i];   // bottom left
+            image[i / 3][image.length - 11 + (i % 3)] = reservedArray[i];   // top right
+        }
+    }
+
+    // generates version information for the 3x6 and 6x3 areas
+    byte[] generateVersionPolynomial(int version) {
+        byte[] versionInfo = new byte[6];
+        for (int i = versionInfo.length - 1; i >= 0 && version > 0; i--) {
+            versionInfo[i] = (byte) (version % 2);
+            version /= 2;
+        }
+
+        final byte[] generatorPoly = {1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1};
+        return generateInfoPolynomial(versionInfo, 18, generatorPoly);
+    }
+
+    // creates binary polynomials with error correction
+    private byte[] generateInfoPolynomial(byte[] original, int size, byte[] generator) {
+        byte[] infoPoly = new byte[size];
+        System.arraycopy(original, 0, infoPoly, 0, original.length);
+        int infoPolyLength = truePolyLength(infoPoly);
+        while (infoPolyLength >= generator.length) {
+            dividePolynomials(infoPoly, infoPoly.length - infoPolyLength, generator);
+            infoPolyLength = truePolyLength(infoPoly);
+        }
+        System.arraycopy(original, 0, infoPoly, 0, original.length);
+        QRUtils.reverseArray(infoPoly);
+        return infoPoly;
+    }
+
+    private void dividePolynomials(byte[] dividend, int start, byte[] divisor) {
+        for (int i = start; i < dividend.length && i - start < divisor.length; i++) {
+            dividend[i] = (byte) (dividend[i] ^ divisor[i - start]);
+        }
+    }
+
+    // gets the length of the polynomial (exponents are in decreasing order; there can be leading 0s on the left)
+    private int truePolyLength(byte[] polynomial) {
+        for (int i = 0; i < polynomial.length; i++) {
+            if (polynomial[i] > 0) {
+                return polynomial.length - i;
+            }
+        }
+        return 0;
     }
 
     // draws the data/error correction words onto the image
@@ -226,6 +257,10 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
         drawAlignmentPatterns(image, version);
         drawTimingPatterns(image);
         drawDarkModule(image, version);
+
+        if(version > 6){
+            fillVersionAreas(image, version);
+        }
         return image;
     }
 
@@ -286,7 +321,7 @@ public class BitPlacement implements Step<ErrorCorrectionEncoding.DataWithErrorC
         return image[y][x] == RESERVED_BLACK || image[y][x] == BLACK;
     }
 
-    static boolean bitHasData(byte[][] image, int y, int x){
+    static boolean bitHasData(byte[][] image, int y, int x) {
         return image[y][x] != EMPTY && image[y][x] != RESERVED;
     }
 

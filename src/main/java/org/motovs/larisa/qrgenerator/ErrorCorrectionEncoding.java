@@ -30,7 +30,7 @@ public class ErrorCorrectionEncoding implements Step<DataEncoding.EncodedData, E
     public DataWithErrorCorrection execute(DataEncoding.EncodedData input) {
         makeErrorCorrectionWords(input.bitBuffer, input.errorWords);
         addRemainderBits(input.bitBuffer, input.version);
-        return new DataWithErrorCorrection(input.bitBuffer, input.version);
+        return new DataWithErrorCorrection(input.bitBuffer, input.version, input.errorCorrectionLevel);
     }
 
     private void addRemainderBits(BitBuffer bitBuffer, int version) {
@@ -44,7 +44,7 @@ public class ErrorCorrectionEncoding implements Step<DataEncoding.EncodedData, E
     private void makeErrorCorrectionWords(BitBuffer bitBuffer, int errorWords) {
         // setup polynomials
         int[] codeWords = bitBuffer.getWords();
-        reverseArray(codeWords);    // reverse for the sake of polynomial multiplication
+        QRUtils.reverseArray(codeWords);    // reverse for the sake of polynomial multiplication
         // TODO: support multiple EC blocks
         GaloisField galoisField = GaloisField.getInstance();
         int[] messagePoly = new int[codeWords.length + errorWords];
@@ -64,21 +64,15 @@ public class ErrorCorrectionEncoding implements Step<DataEncoding.EncodedData, E
 
     }
 
-    private static void reverseArray(int[] a) {
-        for (int i = 0; i < a.length / 2; i++) {
-            int temp = a[i];
-            a[i] = a[a.length - 1 - i];
-            a[a.length - 1 - i] = temp;
-        }
-    }
-
     public static class DataWithErrorCorrection {
         public BitBuffer bitBuffer;
-        int version;
+        public int version;
+        public ErrorCorrectionLevel errorCorrectionLevel;
 
-        public DataWithErrorCorrection(BitBuffer bitBuffer, int version) {
+        public DataWithErrorCorrection(BitBuffer bitBuffer, int version, ErrorCorrectionLevel errorCorrectionLevel) {
             this.bitBuffer = bitBuffer;
             this.version = version;
+            this.errorCorrectionLevel = errorCorrectionLevel;
         }
     }
 }

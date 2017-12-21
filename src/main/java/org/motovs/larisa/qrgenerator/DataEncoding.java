@@ -32,7 +32,8 @@ public class DataEncoding implements Step<DataAnalysis.AnalyzedString, DataEncod
         addMode(bitBuffer, input.mode);
         addCharacterCount(bitBuffer, input.inputString.length());
         encodeData(bitBuffer, input.inputString, input.version);
-        return new EncodedData(bitBuffer, input.version, getEncodedWordCount(input.version), getErrorWordCount(input.version));
+        return new EncodedData(bitBuffer, input.version, getEncodedWordCount(input.version),
+                getErrorWordCount(input.version), input.errorCorrectionLevel);
     }
 
     private void encodeData(BitBuffer bitBuffer, String string, int version) {
@@ -91,13 +92,15 @@ public class DataEncoding implements Step<DataAnalysis.AnalyzedString, DataEncod
         public int codeWords;
         public int errorWords;
 //        public int numBlocks;
+        public ErrorCorrectionLevel errorCorrectionLevel;
 
-        public EncodedData(BitBuffer bitBuffer, int version, int codeWords, int errorWords) {
+        public EncodedData(BitBuffer bitBuffer, int version, int codeWords, int errorWords, ErrorCorrectionLevel errorCorrectionLevel) {
             this.bitBuffer = bitBuffer;
             this.version = version;
             this.codeWords = codeWords;
             this.errorWords = errorWords;
 //            this.numBlocks = numBlocks;
+            this.errorCorrectionLevel = errorCorrectionLevel;
         }
     }
 

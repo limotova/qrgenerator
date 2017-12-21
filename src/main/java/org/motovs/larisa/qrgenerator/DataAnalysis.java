@@ -34,7 +34,7 @@ public class DataAnalysis implements Step<String, DataAnalysis.AnalyzedString> {
         ErrorCorrectionLevel ec = ErrorCorrectionLevel.MEDIUM;
         int version = determineVersion(input.length(), mode, ec);
 
-        return new AnalyzedString(input, mode, version);
+        return new AnalyzedString(input, mode, version, ec);
     }
 
     private Mode determineMode(String input) {
@@ -72,12 +72,14 @@ public class DataAnalysis implements Step<String, DataAnalysis.AnalyzedString> {
     public static class AnalyzedString {
         public final String inputString;
         public final Mode mode;
-        public final int version;
+        final int version;
+        public final ErrorCorrectionLevel errorCorrectionLevel;
 
-        AnalyzedString(String inputString, Mode mode, int version) {
+        AnalyzedString(String inputString, Mode mode, int version, ErrorCorrectionLevel errorCorrectionLevel) {
             this.inputString = inputString;
             this.mode = mode;
             this.version = version;
+            this.errorCorrectionLevel = errorCorrectionLevel;
         }
 
     }
